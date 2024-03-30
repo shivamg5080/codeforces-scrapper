@@ -1,0 +1,97 @@
+import os
+import time
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+
+def scrape_problem_info(problem_url):
+    try:
+        # Initialize the Selenium webdriver (make sure to have chromedriver or geckodriver installed)
+        driver = webdriver.Chrome()  # You can use other web drivers like Firefox by changing this line
+
+        # Open problem page
+        driver.get(problem_url)
+
+        # Wait for the page to load
+        time.sleep(5)
+
+        # Find problem statement element
+        problem_statement_element = driver.find_element(By.CLASS_NAME, 'problem-statement')
+
+        # Extract problem statement
+        problem_statement = problem_statement_element.text
+
+        # Find note element
+        note_element = None
+        try:
+            note_element = driver.find_element(By.XPATH, "//div[contains(text(), 'Note')]/following-sibling::div")
+        except:
+            pass
+
+        # Extract note if found
+        note = note_element.text.strip() if note_element else "Note not found"
+
+        # Find problem ID in the URL
+        problem_id = problem_url.split("/")[-2]
+
+        # Store problem statement, note, inputs, and outputs in a separate file
+        with open(f"scraped_data_{problem_id}.txt", "w", encoding="utf-8") as scraped_data_file:
+            scraped_data_file.write("Problem Statement:\n")
+            scraped_data_file.write(problem_statement + "\n")
+            scraped_data_file.write("Note:\n")
+            scraped_data_file.write(note + "\n")
+
+        # Find input/output examples elements
+        input_output_elements = driver.find_elements(By.CLASS_NAME, 'input-output')
+
+        # Extract inputs and outputs
+        inputs = []
+        outputs = []
+        for io_element in input_output_elements:
+            io_text = io_element.text
+            if "Input" in io_text:
+                inputs.append(io_text)
+            elif "Output" in io_text:
+                outputs.append(io_text)
+
+        # Store inputs and outputs in a separate file
+        with open(f"scraped_data_{problem_id}.txt", "a", encoding="utf-8") as scraped_data_file:
+            scraped_data_file.write("Inputs:\n")
+            for input in inputs:
+                scraped_data_file.write(input + "\n")
+            scraped_data_file.write("Outputs:\n")
+            for output in outputs:
+                scraped_data_file.write(output + "\n")
+
+        # Close the webdriver
+        driver.quit()
+
+        return {
+            'problem_statement': problem_statement,
+            'inputs': inputs,
+            'outputs': outputs
+        }
+
+    except Exception as e:
+        print("An error occurred:", e)
+        return None
+
+# Example usage:
+problem_urls = [
+    "https://codeforces.com/problemset/problem/1950/C",
+    "https://codeforces.com/problemset/problem/1949/K",
+    # Add more problem URLs here
+]
+
+for problem_url in problem_urls:
+    problem_info = scrape_problem_info(problem_url)
+    if problem_info:
+        print("Problem Statement:", problem_info['problem_statement'])
+        print("Inputs:", problem_info['inputs'])
+        print("Outputs:", problem_info['outputs'])
+
+# Check if the file exists and has content
+if os.path.exists(f"scraped_data_{problem_id}.txt") and os.path.getsize(f"scraped_data_{problem_id}.txt") > 0:
+    print(f"Data for problem {problem_id} has been scraped and saved in scraped_data_{problem_id}.txt")
+else:
+    print(f"No data has been scraped for problem {problem_id}. Check the code and try again.")
